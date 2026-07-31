@@ -1,6 +1,14 @@
 import subprocess
 import pyautogui
+import base64
+from io import BytesIO
 import time
+from dotenv import load_dotenv
+
+from openai import OpenAI
+
+load_dotenv("../.env")
+client = OpenAI()
 
 class Result():
     def __init__(self, time, result):
@@ -47,39 +55,60 @@ class RestaurantResults():
         subprocess.Popen([
             chrome_path,
         ])
+        time.sleep(1.5)
         pyautogui.moveTo(300, 100, duration=1)
         pyautogui.typewrite(self.url, interval=0.05)
         pyautogui.keyDown("enter")
         pyautogui.keyUp("enter")
-        pyautogui.moveTo(2300, 1700, duration=1)
         time.sleep(3)
+        #move to availaility
+        availCenter = pyautogui.center(pyautogui.locateOnScreen("./imgToNav/AvailabilityButton.png", minSearchTime=3, confidence=0.8))
+        pyautogui.moveTo(availCenter[0], availCenter[1], duration=1)
         pyautogui.leftClick()
         time.sleep(3)
+
+        nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen("./imgToNav/NextMonthButton.png", minSearchTime=3, confidence=0.8))
+        pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
+        for i in range(12):
+            pyautogui.leftClick()
+            time.sleep(1)
+
+        screen_x, screen_y = pyautogui.size()
+        img = pyautogui.screenshot(region=(int(screen_x/4), int(screen_y/4), int(screen_x/2), int(screen_y/2)))
+        buffer = BytesIO()
+        img.save(buffer, format="png")
+        img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
         
-        # for i in range(12):
-        #     pyautogui.moveTo(1900, 850, duration=1)
-        #     time.sleep(1)
+        response = client.responses.create(
+            model="gpt-5",
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": """
+        Analyze this reservation calendar.
 
-        # X_end = 1960
-        # X_start = 1540
-        # Y_start = 940
-        # Y_end = 1300
+        A date is unavailable if it is visually disabled, crossed out,
+        greyed out, or blocked. Write the date of the last available reservation in MM-DD-YYYY format 
+        with MM indicating where the numeric represnetation for the month would go, 
+        DD for the numeric representation for the day,
+        and YYYY for the year
+        """,
+                        },
+                        {
+                            "type": "input_image",
+                            "image_url": f"data:image/png;base64,{img_str}",
+                            "detail": "high",
+                        },
+                    ],
+                }
+            ],
+        )
 
-        X_end = 1960
-        X_start = 1540
-        Y_start = 935
-        Y_end = 1330
+        print(response.output_text)
 
-        x_dif = (X_end-X_start)/7
-        y_dif = (Y_end-Y_start)/6
-        x = X_start
-        y = Y_start
 
-        for i in range(6):
-            x = X_start
-            for j in range(7):
-                pyautogui.moveTo(x, y, duration=0.5)
-                pyautogui.leftClick()
-                time.sleep(1)
-                x+=x_dif
-            y+=y_dif
+        
