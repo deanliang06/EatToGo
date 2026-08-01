@@ -1,0 +1,4 @@
+pyautogui
+dotenv
+openai
+django

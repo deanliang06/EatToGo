@@ -3,6 +3,8 @@ import pyautogui
 import base64
 from io import BytesIO
 import time
+from celery import Celery
+
 from dotenv import load_dotenv
 
 from openai import OpenAI
@@ -11,9 +13,18 @@ load_dotenv("../.env")
 client = OpenAI()
 
 class Result():
-    def __init__(self, time, result):
-        self.latestTime = time
-        self.timeOfAccess = result
+    def __init__(self, latestOpening, now):
+        self.latestTime = latestOpening
+        self.timeOfAccess = now
+
+
+class InjectedResult(Result):
+    def __init__(self, latestOpening, now, history):
+        super().__init__(latestOpening, now)
+        self._history = history
+
+    def __getitem__(self, index):
+        return self._history[index]
 
 
 class ResultsConfig():
@@ -32,7 +43,7 @@ class ResultsConfig():
         ]
 
         if len(correct) == 0:
-            return False, -1
+            return False, -1, -1
 
         #If there are at least 2 of the same differences in time (Only strategy for now)
         same = 0
@@ -40,16 +51,15 @@ class ResultsConfig():
             if el.latestTime - el.timeOfAccess == correct[0].latestTime - correct[0].timeOfAccess:
                 same+=1
             if same == 2:
-                return True, el.timeOfAccess
+                return True, el.timeOfAccess, el.latestTime - el.timeOfAccess 
 
-        return False, -1
+        return False, -1, -1
 
     
 class RestaurantResults():
-    resultsConfig = ResultsConfig()
     def __init__(self, url):
+        self.resultsConfig = ResultsConfig()
         self.url = url
-
     def scraping(self):
         chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
         subprocess.Popen([
@@ -107,8 +117,24 @@ class RestaurantResults():
                 }
             ],
         )
+        latestDate = time.mktime(time.strptime(response.output_text, "%m-%d-%Y"))
 
-        print(response.output_text)
+        now = time.mktime(tuple(removeMinuteSec(list(time.localtime(time.time())))))
+
+        self.resultsConfig.addResult(Result(latestDate, now))
+        done, timeOfAccess, dif = self.resultsConfig.checkResult()
+        if not done:
+            return {}
+
+        return {"hour": time.localtime(timeOfAccess)[3], "dayDif": (dif / (3600 * 24))}
+
+
+def removeMinuteSec(current):
+    current[4] = 0
+    current[5] = 0
+    return current
+
+
 
 
         
