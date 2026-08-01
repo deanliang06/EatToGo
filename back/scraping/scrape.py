@@ -3,7 +3,7 @@ import pyautogui
 import base64
 from io import BytesIO
 import time
-from celery import Celery
+# from celery import Celery
 
 from dotenv import load_dotenv
 
