@@ -3,3 +3,5 @@ dotenv
 openai
 django
 opencv-python
+celery
+redis
