@@ -5,3 +5,4 @@ django
 opencv-python
 celery
 redis
+django-cors-headers

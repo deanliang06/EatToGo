@@ -1,5 +1,6 @@
-from datetime import timedelta, timezone
+from datetime import timedelta
 
+from django.utils import timezone
 from django.shortcuts import render
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
@@ -57,8 +58,8 @@ def get_task_status(request, task_id):
     try:
         result = AsyncResult(task_id)
         if result.ready():
-            return JsonResponse({'status': 'completed', 'results': result.result}, status=200)
+            return JsonResponse({'status': 'SUCCESS', 'result': result.result}, status=200)
         else:
-            return JsonResponse({'status': 'pending'}, status=200)
+            return JsonResponse({'status': 'PENDING'}, status=200)
     except Exception:
         return JsonResponse({'status': 'unknown'}, status=404)
