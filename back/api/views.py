@@ -1,8 +1,11 @@
+from datetime import timedelta, timezone
+
 from django.shortcuts import render
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from .tasks import scrape_restaurant_task
 
 @csrf_exempt
 def signup(request):
@@ -34,10 +37,16 @@ def signin(request):
     return JsonResponse({'detail': 'Signed in successfully'}, status=200)
 
 
-
+@csrf_exempt
 def scrape_restaurant(request):
-    user = request.user
-    if not user.is_authenticated:
-        return JsonResponse({'detail': 'User not authenticated'}, status=401)
+    # user = request.user
+    # if not user.is_authenticated:
+    #     return JsonResponse({'detail': 'User not authenticated'}, status=401)
 
     restaurant_url = request.POST.get('url')
+    next_hour = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)      
+    result = scrape_restaurant_task.apply_async(
+        args=[restaurant_url],
+        eta=next_hour,
+    )
+    return JsonResponse({'detail': 'Scraping task started', 'task_id': result.id}, status=202)

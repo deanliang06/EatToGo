@@ -1,0 +1,39 @@
+services:
+  redis:
+    image: redis:latest
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "8080:6379"
+  api:
+    build: .
+    command: python3 manage.py runserver 0.0.0.0:8000 --noreload
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker1:
+    build: .
+    command:
+      - /bin/sh
+      - -c
+      - >
+        Xvfb :99 -screen 0 3840x2160x24 -ac -nolisten tcp &
+        while [ ! -S /tmp/.X11-unix/X99 ]; do sleep 0.1; done;
+        touch /tmp/eattogo.Xauthority;
+        export DISPLAY=:99 XAUTHORITY=/tmp/eattogo.Xauthority;
+        exec celery -A eatAPI worker --loglevel=info --concurrency=1
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+    shm_size: "1gb"
+    volumes:
+      - ./debug:/debug
