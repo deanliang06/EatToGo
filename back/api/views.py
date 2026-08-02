@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .tasks import scrape_restaurant_task
+from celery.result import AsyncResult
 
 @csrf_exempt
 def signup(request):
@@ -50,3 +51,14 @@ def scrape_restaurant(request):
         eta=next_hour,
     )
     return JsonResponse({'detail': 'Scraping task started', 'task_id': result.id}, status=202)
+
+@csrf_exempt
+def get_task_status(request, task_id):
+    try:
+        result = AsyncResult(task_id)
+        if result.ready():
+            return JsonResponse({'status': 'completed', 'results': result.result}, status=200)
+        else:
+            return JsonResponse({'status': 'pending'}, status=200)
+    except Exception:
+        return JsonResponse({'status': 'unknown'}, status=404)
