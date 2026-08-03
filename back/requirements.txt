@@ -6,3 +6,4 @@ opencv-python
 celery
 redis
 django-cors-headers
+psycopg[binary]

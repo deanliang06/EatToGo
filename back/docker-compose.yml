@@ -9,9 +9,27 @@ services:
       start_period: 10s
     ports:
       - "8080:6379"
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "5432:5432"
+  
   api:
     build: .
-    command: python3 manage.py runserver 0.0.0.0:8000 --noreload
+    command: >
+      /bin/sh -c "python3 manage.py migrate &&
+      python3 manage.py runserver 0.0.0.0:8000 --noreload"
     ports:
       - "8000:8000"
     environment:
@@ -19,6 +37,9 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+
 
   worker1:
     build: .
@@ -36,6 +57,9 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+    
     shm_size: "1gb"
     volumes:
       - ./debug:/debug

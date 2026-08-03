@@ -25,6 +25,7 @@ def removeMinuteSec(current):
 
 def checkResult(resultList) -> bool:
     #if no same times then we just die I suppose
+    resultList = [ScrapeResult.objects.get(id=result_id) for result_id in resultList]
     correct = [
         result for i, result in enumerate(resultList) 
         if i != 0 and result[i].latestTime != result[i-1].latestTime
@@ -47,6 +48,8 @@ def checkResult(resultList) -> bool:
 
 def scrapeURL(task, url):
     image_directory = Path(__file__).resolve().parent / "imgToNav"
+    test_directory = Path(__file__).resolve().parent / "test"
+        
     subprocess.Popen([
         "google-chrome",
         "--no-sandbox",
@@ -62,25 +65,26 @@ def scrapeURL(task, url):
     time.sleep(5)
 
     screen_x, screen_y = pyautogui.size()
-    availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.36))
+    availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.30))
     pyautogui.moveTo(availCenter[0], availCenter[1], duration=1)
     pyautogui.leftClick()
     time.sleep(3)
 
-    nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, confidence=0.5))
+    nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, confidence=0.3))
     pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
     for i in range(12):
         pyautogui.leftClick()
         time.sleep(1)
-
+    
     img = pyautogui.screenshot(region=(int(screen_x/4), int(screen_y/4), int(screen_x/2), int(screen_y/2)))
+    img.save(str(image_directory / f"screenshot{time.time()}.png"))
     buffer = BytesIO()
     img.save(buffer, format="png")
     img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
     
     response = client.responses.create(
-        model="gpt-5",
+        model="gpt-5.5",
         input=[
             {
                 "role": "user",
@@ -110,8 +114,8 @@ def scrapeURL(task, url):
 
     now = time.mktime(tuple(removeMinuteSec(list(time.localtime(time.time())))))
 
-    scrapeResult = ScrapeResult.objects.create(task=task, timeOfAccess=now, latestTime=latestDate)
-    task.addResult(scrapeResult)
+    scrapeResult = ScrapeResult.objects.create(task=task, timeOfAccess=int(now), latestTime=int(latestDate))
+    task.addResult(scrapeResult.id)
 
 
     done, timeOfAccess, dif = checkResult(task.results)
