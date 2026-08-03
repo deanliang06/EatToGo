@@ -46,7 +46,7 @@ def scrape_restaurant(request):
     #     return JsonResponse({'detail': 'User not authenticated'}, status=401)
 
     restaurant_url = request.POST.get('url')
-    next_hour = timezone.now()#.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)      
+    next_hour = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)      
     result = scrape_restaurant_task.apply_async(
         args=[restaurant_url],
         eta=next_hour,
