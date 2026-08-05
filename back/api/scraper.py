@@ -48,8 +48,7 @@ def checkResult(resultList) -> bool:
 
 def scrapeTime(task, url):
     image_directory = Path(__file__).resolve().parent / "imgToNav"
-        
-    subprocess.Popen([
+    chrome = subprocess.Popen([
         "google-chrome",
         "--no-sandbox",
         "--disable-dev-shm-usage",
@@ -61,67 +60,70 @@ def scrapeTime(task, url):
         url,
     ])
 
-    time.sleep(5)
+    try:
+        time.sleep(5)
 
-    screen_x, screen_y = pyautogui.size()
-    availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.30))
-    pyautogui.moveTo(availCenter[0], availCenter[1], duration=1)
-    pyautogui.leftClick()
-    time.sleep(3)
-
-    nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, confidence=0.3))
-    pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
-    for i in range(12):
+        screen_x, screen_y = pyautogui.size()
+        availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.30))
+        pyautogui.moveTo(availCenter[0], availCenter[1], duration=1)
         pyautogui.leftClick()
-        time.sleep(1)
-    
-    img = pyautogui.screenshot(region=(int(screen_x/4), int(screen_y/4), int(screen_x/2), int(screen_y/2)))
-    img.save(str(image_directory / f"screenshot{time.time()}.png"))
-    buffer = BytesIO()
-    img.save(buffer, format="png")
-    img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        time.sleep(3)
 
-    
-    response = client.responses.create(
-        model="gpt-5.5",
-        input=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": """
-    Analyze this reservation calendar.
+        nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, confidence=0.3))
+        pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
+        for i in range(12):
+            pyautogui.leftClick()
+            time.sleep(1)
+        
+        img = pyautogui.screenshot(region=(int(screen_x/4), int(screen_y/4), int(screen_x/2), int(screen_y/2)))
+        buffer = BytesIO()
+        img.save(buffer, format="png")
+        img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
-    A date is unavailable if it is visually disabled, crossed out,
-    greyed out, or blocked. Write the date of the last available reservation in MM-DD-YYYY format 
-    with MM indicating where the numeric represnetation for the month would go, 
-    DD for the numeric representation for the day,
-    and YYYY for the year
-    """,
-                    },
-                    {
-                        "type": "input_image",
-                        "image_url": f"data:image/png;base64,{img_str}",
-                        "detail": "high",
-                    },
-                ],
-            }
-        ],
-    )
-    latestDate = time.mktime(time.strptime(response.output_text, "%m-%d-%Y"))
+        
+        response = client.responses.create(
+            model="gpt-5.5",
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": """
+        Analyze this reservation calendar.
 
-    now = time.mktime(tuple(removeMinuteSec(list(time.localtime(time.time())))))
+        A date is unavailable if it is visually disabled, crossed out,
+        greyed out, or blocked. Write the date of the last available reservation in MM-DD-YYYY format 
+        with MM indicating where the numeric represnetation for the month would go, 
+        DD for the numeric representation for the day,
+        and YYYY for the year
+        """,
+                        },
+                        {
+                            "type": "input_image",
+                            "image_url": f"data:image/png;base64,{img_str}",
+                            "detail": "high",
+                        },
+                    ],
+                }
+            ],
+        )
+        latestDate = time.mktime(time.strptime(response.output_text, "%m-%d-%Y"))
 
-    scrapeResult = ScrapeResult.objects.create(task=task, timeOfAccess=int(now), latestTime=int(latestDate))
-    task.addResult(scrapeResult.id)
+        now = time.mktime(tuple(removeMinuteSec(list(time.localtime(time.time())))))
+
+        scrapeResult = ScrapeResult.objects.create(task=task, timeOfAccess=int(now), latestTime=int(latestDate))
+        task.addResult(scrapeResult.id)
 
 
-    done, timeOfAccess, dif = checkResult(task.results)
-    if not done:
-        return {"dayDif": int((latestDate - time.time()) / (3600 * 24)), "done": False}
+        done, timeOfAccess, dif = checkResult(task.results)
+        if not done:
+            return {"dayDif": int((latestDate - time.time()) / (3600 * 24)), "done": False}
 
-    return {"hour": time.localtime(timeOfAccess)[3], "dayDif": (dif / (3600 * 24)), "done": True}
+        return {"hour": time.localtime(timeOfAccess)[3], "dayDif": (dif / (3600 * 24)), "done": True}
+    finally:
+        chrome.terminate()
+        chrome.wait()
 
 
 
@@ -130,9 +132,11 @@ def scrapeTime(task, url):
         
 def selectTime(task, url, reservationFor):
     image_directory = Path(__file__).resolve().parent / "imgToNav"
+    test_dir = Path(__file__).resolve().parent / "debug"
+
     tupleTime = time.strptime(reservationFor, "%H:%M:%S %m/%d/%Y")
 
-    subprocess.Popen([
+    chrome = subprocess.Popen([
         "google-chrome",
         "--no-sandbox",
         "--disable-dev-shm-usage",
@@ -143,33 +147,40 @@ def selectTime(task, url, reservationFor):
         "--user-data-dir=/tmp/eattogo-chrome-profile",
         url,
     ])
+    try:
+        time.sleep(5)
 
-    time.sleep(5)
-
-    screen_x, screen_y = pyautogui.size()
-    availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.30))
-    pyautogui.moveTo(availCenter[0], availCenter[1], duration=1)
-    pyautogui.leftClick()
-    time.sleep(3)
-
-    nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, confidence=0.3))
-    pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
-
-    #TODO : NEED TO FIND CORRECT MONTH
-    currentMonth = time.localtime(time.time())[1]
-    needMonth = tupleTime[1]
-    separationMonths = needMonth - currentMonth if needMonth > currentMonth else 12 - currentMonth + needMonth
-
-    for i in range(separationMonths):
+        screen_x, screen_y = pyautogui.size()
+        availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.30))
+        pyautogui.moveTo(availCenter[0], availCenter[1], duration=1)
         pyautogui.leftClick()
-        time.sleep(1)
-    
-    img = pyautogui.screenshot(region=(int(screen_x/4), int(screen_y/4), int(screen_x/2), int(screen_y/2)))
-    
+        time.sleep(3)
 
-    # TODO: NEED TO FIND CORRECT TIME
-    print("This is the pytesseract", pytesseract.image_to_boxes(img, output_type=pytesseract.Output.DICT))
-    return {"done": False}
+        nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, confidence=0.3))
+        pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
+
+        #TODO : NEED TO FIND CORRECT MONTH
+        currentMonth = time.localtime(time.time())[1]
+        needMonth = tupleTime[1]
+        separationMonths = needMonth - currentMonth if needMonth > currentMonth else 12 - currentMonth + needMonth
+
+        for i in range(separationMonths):
+            pyautogui.leftClick()
+            time.sleep(1)
+        
+        img = pyautogui.screenshot(region=(int(screen_x/4), int(screen_y/4), int(screen_x/2), int(screen_y/2)))
+        img.save(test_dir / f"screenshot{time.time()}.png")
+        
+
+        # TODO: NEED TO FIND CORRECT TIME
+        config = "--oem 3 --psm 11 -c tessedit_char_whitelist=0123456789"
+        page = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, config=config)
+        print("This is the pytesseract", page["text"])
+
+        return {"done": False}
+    finally:
+        chrome.terminate()
+        chrome.wait()
 
     #Click the box
     #Then use the pytesseract and openai to match preferences and such and if it requires a credit card abort and return error
