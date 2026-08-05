@@ -48,6 +48,7 @@ def checkResult(resultList) -> bool:
 
 def scrapeTime(task, url):
     image_directory = Path(__file__).resolve().parent / "imgToNav"
+    test_dir = Path(__file__).resolve().parents[1] / "debug"
     chrome = subprocess.Popen([
         "google-chrome",
         "--no-sandbox",
@@ -69,13 +70,18 @@ def scrapeTime(task, url):
         pyautogui.leftClick()
         time.sleep(3)
 
-        nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, confidence=0.3))
+        img = pyautogui.screenshot(region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)))
+        img.save(test_dir / f"screenshot{time.time()}.png")
+        nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.3))
         pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
+        
         for i in range(12):
             pyautogui.leftClick()
             time.sleep(1)
         
-        img = pyautogui.screenshot(region=(int(screen_x/4), int(screen_y/4), int(screen_x/2), int(screen_y/2)))
+        img = pyautogui.screenshot(region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)))
+        img.save(test_dir / f"screenshot{time.time()}.png")
+
         buffer = BytesIO()
         img.save(buffer, format="png")
         img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
@@ -132,7 +138,7 @@ def scrapeTime(task, url):
         
 def selectTime(task, url, reservationFor):
     image_directory = Path(__file__).resolve().parent / "imgToNav"
-    test_dir = Path(__file__).resolve().parent / "debug"
+    test_dir = Path(__file__).resolve().parents[1] / "debug"
 
     tupleTime = time.strptime(reservationFor, "%H:%M:%S %m/%d/%Y")
 
@@ -156,7 +162,7 @@ def selectTime(task, url, reservationFor):
         pyautogui.leftClick()
         time.sleep(3)
 
-        nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, confidence=0.3))
+        nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.3))
         pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
 
         #TODO : NEED TO FIND CORRECT MONTH
@@ -168,12 +174,12 @@ def selectTime(task, url, reservationFor):
             pyautogui.leftClick()
             time.sleep(1)
         
-        img = pyautogui.screenshot(region=(int(screen_x/4), int(screen_y/4), int(screen_x/2), int(screen_y/2)))
+        img = pyautogui.screenshot(region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)))
         img.save(test_dir / f"screenshot{time.time()}.png")
         
 
         # TODO: NEED TO FIND CORRECT TIME
-        config = "--oem 3 --psm 11 -c tessedit_char_whitelist=0123456789"
+        config = "--oem 3 --psm 6"
         page = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, config=config)
         print("This is the pytesseract", page["text"])
 

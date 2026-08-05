@@ -14,7 +14,6 @@ def restaurant_task(self, restaurant_url, reservationFor=None):
     if job.status == 'PENDING':
         results = scrapeTime(job, restaurant_url)
         if time.time() + int(results.get('dayDif', 0)) * 3600 * 24 > time.mktime(time.strptime(reservationFor, "%H:%M:%S %m/%d/%Y")):
-            print("This executes right?")
             job.status = 'SCHEDUALED'
             job.save(update_fields=['status'])
 
