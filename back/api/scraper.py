@@ -7,7 +7,7 @@ import time
 from celery.utils.log import get_logger
 from dotenv import load_dotenv
 from .models import ScrapeResult, Task
-
+import pytesseract
 
 from openai import OpenAI
 
@@ -46,9 +46,8 @@ def checkResult(resultList) -> bool:
 
 
 
-def scrapeURL(task, url):
+def scrapeTime(task, url):
     image_directory = Path(__file__).resolve().parent / "imgToNav"
-    test_directory = Path(__file__).resolve().parent / "test"
         
     subprocess.Popen([
         "google-chrome",
@@ -120,9 +119,60 @@ def scrapeURL(task, url):
 
     done, timeOfAccess, dif = checkResult(task.results)
     if not done:
-        return {}
+        return {"dayDif": int((latestDate - time.time()) / (3600 * 24)), "done": False}
 
-    return {"hour": time.localtime(timeOfAccess)[3], "dayDif": (dif / (3600 * 24))}
+    return {"hour": time.localtime(timeOfAccess)[3], "dayDif": (dif / (3600 * 24)), "done": True}
+
+
+
+
+
+        
+def selectTime(task, url, reservationFor):
+    image_directory = Path(__file__).resolve().parent / "imgToNav"
+    tupleTime = time.strptime(reservationFor, "%H:%M:%S %m/%d/%Y")
+
+    subprocess.Popen([
+        "google-chrome",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--window-size=3840,2160",
+        "--force-device-scale-factor=1",
+        "--user-data-dir=/tmp/eattogo-chrome-profile",
+        url,
+    ])
+
+    time.sleep(5)
+
+    screen_x, screen_y = pyautogui.size()
+    availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.30))
+    pyautogui.moveTo(availCenter[0], availCenter[1], duration=1)
+    pyautogui.leftClick()
+    time.sleep(3)
+
+    nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, confidence=0.3))
+    pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
+
+    #TODO : NEED TO FIND CORRECT MONTH
+    currentMonth = time.localtime(time.time())[1]
+    needMonth = tupleTime[1]
+    separationMonths = needMonth - currentMonth if needMonth > currentMonth else 12 - currentMonth + needMonth
+
+    for i in range(separationMonths):
+        pyautogui.leftClick()
+        time.sleep(1)
+    
+    img = pyautogui.screenshot(region=(int(screen_x/4), int(screen_y/4), int(screen_x/2), int(screen_y/2)))
+    
+
+    # TODO: NEED TO FIND CORRECT TIME
+    print("This is the pytesseract", pytesseract.image_to_boxes(img, output_type=pytesseract.Output.DICT))
+    return {"done": False}
+
+    #Click the box
+    #Then use the pytesseract and openai to match preferences and such and if it requires a credit card abort and return error
 
 
 

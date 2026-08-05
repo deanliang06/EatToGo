@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .tasks import scrape_restaurant_task
+from .tasks import restaurant_task
 from celery.result import AsyncResult
 
 @csrf_exempt
@@ -46,9 +46,11 @@ def scrape_restaurant(request):
     #     return JsonResponse({'detail': 'User not authenticated'}, status=401)
 
     restaurant_url = request.POST.get('url')
-    next_hour = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)      
-    result = scrape_restaurant_task.apply_async(
-        args=[restaurant_url],
+    # time_for_reservation = request.POST.get('reservationFor')
+    time_for_reservation = "20:00:00 08/06/2025"  # Placeholder for testing
+    next_hour = timezone.now()#.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)      
+    result = restaurant_task.apply_async(
+        args=[restaurant_url, time_for_reservation],
         eta=next_hour,
     )
     return JsonResponse({'detail': 'Scraping task started', 'task_id': result.id}, status=202)

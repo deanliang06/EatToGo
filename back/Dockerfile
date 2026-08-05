@@ -15,6 +15,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
 RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y ./google-chrome-stable_current_amd64.deb \
+    && apt-get install -y --no-install-recommends tesseract-ocr \
     && rm google-chrome-stable_current_amd64.deb \
     && rm -rf /var/lib/apt/lists/*
 

@@ -4,7 +4,9 @@ import time
 # Create your models here.
 class Task(models.Model):
     task_id = models.CharField(max_length=255, unique=True)
+    status = models.CharField(max_length=50, default='PENDING')
     results = models.JSONField(null=True, blank=True)
+    reservationFor = models.CharField(max_length=255, null=True, blank=True)
 
     def addResult(self, result):
         resultsList = list(self.results if self.results else [])
