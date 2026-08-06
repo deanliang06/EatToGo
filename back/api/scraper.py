@@ -16,6 +16,7 @@ logger = get_logger(__name__)
 load_dotenv()
 client = OpenAI()
 
+days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 def removeMinuteSec(current):
     current[4] = 0
@@ -45,10 +46,19 @@ def checkResult(resultList) -> bool:
     return False, -1, -1
 
 
-
 def scrapeTime(task, url):
     image_directory = Path(__file__).resolve().parent / "imgToNav"
     test_dir = Path(__file__).resolve().parents[1] / "debug"
+    tries = 3
+    while tries > 0:
+        try:
+            return scrapeTimeHelper(task, url, image_directory, test_dir)
+        except Exception as e:
+            logger.error(f"Error scraping time: {e}")
+            tries -= 1
+            time.sleep(5)
+
+def scrapeTimeHelper(task, url, image_directory, test_dir):
     chrome = subprocess.Popen([
         "google-chrome",
         "--no-sandbox",
@@ -65,7 +75,8 @@ def scrapeTime(task, url):
         time.sleep(5)
 
         screen_x, screen_y = pyautogui.size()
-        availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.30))
+        #Something is wrong with
+        availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(screen_y/3), int(screen_x/3), int(screen_y/3)), confidence=0.7))
         pyautogui.moveTo(availCenter[0], availCenter[1], duration=1)
         pyautogui.leftClick()
         time.sleep(3)
@@ -134,7 +145,10 @@ def scrapeTime(task, url):
 
 
 
-
+def findNumberDown(tupleTime):
+    weeksAfterFirst = (tupleTime[2] - time.localtime(time.time())[2])/7
+    offset = 1 if time.localtime(time.time())[6] < tupleTime[6] else 0
+    return weeksAfterFirst + offset
         
 def selectTime(task, url, reservationFor):
     image_directory = Path(__file__).resolve().parent / "imgToNav"
@@ -157,7 +171,7 @@ def selectTime(task, url, reservationFor):
         time.sleep(5)
 
         screen_x, screen_y = pyautogui.size()
-        availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.30))
+        availCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "AvailabilityButton.png"), 55, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.70))
         pyautogui.moveTo(availCenter[0], availCenter[1], duration=1)
         pyautogui.leftClick()
         time.sleep(3)
@@ -165,10 +179,9 @@ def selectTime(task, url, reservationFor):
         nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.3))
         pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
 
-        #TODO : NEED TO FIND CORRECT MONTH
         currentMonth = time.localtime(time.time())[1]
         needMonth = tupleTime[1]
-        separationMonths = needMonth - currentMonth if needMonth > currentMonth else 12 - currentMonth + needMonth
+        separationMonths = needMonth - currentMonth if needMonth >= currentMonth else 12 - currentMonth + needMonth
 
         for i in range(separationMonths):
             pyautogui.leftClick()
@@ -179,13 +192,37 @@ def selectTime(task, url, reservationFor):
         
 
         # TODO: NEED TO FIND CORRECT TIME
+        img = pyautogui.screenshot(region=(int(2*screen_x/5), int(2*screen_y/5), int(screen_x/5), int(screen_y/5)))
+        img.save(test_dir / f"screenshot{time.time()}.png")
         config = "--oem 3 --psm 6"
         page = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, config=config)
-        print("This is the pytesseract", page["text"])
+        print(page['text'])
+        for i, text in enumerate(page['text']):
+            if text.strip() == days[tupleTime[6]]:
+                x = page['left'][i]
+                y = page['top'][i]
+                width = page['width'][i]
+                height = page['height'][i]
+                center = pyautogui.center((x, y, width, height))
+
+                numberDown = findNumberDown(tupleTime)
+                pyautogui.moveTo(center[0], center[1] + numberDown * 36, duration=1)
+                pyautogui.leftClick()
+                time.sleep(1)
+                print("found, ")
+                img = pyautogui.screenshot(region=(center[0], center[1] + numberDown * 36, 40, 40))
+                img.save(test_dir / f"screenshot{time.time()}.png")
+                break
+
+        img = pyautogui.screenshot(region=(int(2*screen_x/5), int(2*screen_y/5), int(screen_x/5), int(screen_y/5)))
+        img.save(test_dir / f"screenshot{time.time()}.png")
+
+        pyautogui.scroll(-1000)
 
         return {"done": False}
     finally:
         chrome.terminate()
+
         chrome.wait()
 
     #Click the box
