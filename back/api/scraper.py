@@ -81,8 +81,8 @@ def scrapeTimeHelper(task, url, image_directory, test_dir):
         pyautogui.leftClick()
         time.sleep(3)
 
-        img = pyautogui.screenshot(region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)))
-        img.save(test_dir / f"screenshot{time.time()}.png")
+        # img = pyautogui.screenshot(region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)))
+        # img.save(test_dir / f"screenshot{time.time()}.png")
         nextMonthCenter = pyautogui.center(pyautogui.locateOnScreen(str(image_directory / "NextMonthButton.png"), 60, region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)), confidence=0.3))
         pyautogui.moveTo(nextMonthCenter[0], nextMonthCenter[1], duration=1)
         
@@ -91,7 +91,7 @@ def scrapeTimeHelper(task, url, image_directory, test_dir):
             time.sleep(1)
         
         img = pyautogui.screenshot(region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)))
-        img.save(test_dir / f"screenshot{time.time()}.png")
+        # img.save(test_dir / f"screenshot{time.time()}.png")
 
         buffer = BytesIO()
         img.save(buffer, format="png")
@@ -146,7 +146,7 @@ def scrapeTimeHelper(task, url, image_directory, test_dir):
 
 
 def findNumberDown(tupleTime):
-    weeksAfterFirst = (tupleTime[2] - time.localtime(time.time())[2])/7
+    weeksAfterFirst = int((tupleTime[2] - 0)/7)
     offset = 1 if time.localtime(time.time())[6] < tupleTime[6] else 0
     return weeksAfterFirst + offset
         
@@ -187,8 +187,8 @@ def selectTime(task, url, reservationFor):
             pyautogui.leftClick()
             time.sleep(1)
         
-        img = pyautogui.screenshot(region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)))
-        img.save(test_dir / f"screenshot{time.time()}.png")
+        # img = pyautogui.screenshot(region=(int(screen_x/3), int(2*screen_y/5), int(screen_x/3), int(screen_y/5)))
+        # img.save(test_dir / f"screenshot{time.time()}.png")
         
 
         # TODO: NEED TO FIND CORRECT TIME
@@ -206,23 +206,18 @@ def selectTime(task, url, reservationFor):
                 center = pyautogui.center((x, y, width, height))
 
                 numberDown = findNumberDown(tupleTime)
-                pyautogui.moveTo(center[0], center[1] + numberDown * 36, duration=1)
+                # print("number down" + str(numberDown))
+                pyautogui.moveTo(int(2*screen_x/5) + int(center[0]) + 40, int(2*screen_y/5)  + int(center[1]) + numberDown * 36 + 40, duration=1)
                 pyautogui.leftClick()
-                time.sleep(1)
-                print("found, ")
-                img = pyautogui.screenshot(region=(center[0], center[1] + numberDown * 36, 40, 40))
-                img.save(test_dir / f"screenshot{time.time()}.png")
                 break
 
-        img = pyautogui.screenshot(region=(int(2*screen_x/5), int(2*screen_y/5), int(screen_x/5), int(screen_y/5)))
-        img.save(test_dir / f"screenshot{time.time()}.png")
 
         pyautogui.scroll(-1000)
-
+        img = pyautogui.screenshot(region=(int(2*screen_x/5), int(3*screen_y/7), int(screen_x/5), int(3*screen_y/7)))
+        img.save(test_dir / f"screenshot{time.time()}.png") 
         return {"done": False}
     finally:
         chrome.terminate()
-
         chrome.wait()
 
     #Click the box

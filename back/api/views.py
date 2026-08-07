@@ -47,7 +47,7 @@ def scrape_restaurant(request):
 
     restaurant_url = request.POST.get('url')
     # time_for_reservation = request.POST.get('reservationFor')
-    time_for_reservation = "20:00:00 08/07/2025"  # Placeholder for testing
+    time_for_reservation = "20:00:00 08/08/2025"  # Placeholder for testing
     next_hour = timezone.now()#.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)      
     result = restaurant_task.apply_async(
         args=[restaurant_url, time_for_reservation],
